@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>魔审资源下载</title>
+    <style>
+        /* 基础样式 */
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            background-color: #f5f7fa;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        }
+
+        .card {
+            text-align: center;
+            background: #ffffff;
+            padding: 40px 50px;
+            border-radius: 20px;
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.05);
+            max-width: 420px;
+            width: 90%;
+            position: relative;
+        }
+
+        h1 {
+            color: #333;
+            margin-bottom: 30px;
+            font-size: 24px;
+            font-weight: 700;
+        }
+
+        /* 资源下载大按钮 */
+        .main-btn {
+            display: block;
+            padding: 18px;
+            font-size: 18px;
+            font-weight: 600;
+            color: #fff;
+            background: linear-gradient(135deg, #007aff, #005bb5);
+            border-radius: 12px;
+            text-decoration: none;
+            margin-bottom: 25px;
+            transition: all 0.2s;
+            box-shadow: 0 8px 20px rgba(0, 122, 255, 0.25);
+        }
+
+        .main-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 12px 25px rgba(0, 122, 255, 0.35);
+        }
+
+        /* 底部信息栏 */
+        .footer {
+            margin-top: 10px;
+            padding-top: 20px;
+            border-top: 1px dashed #eee;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .qq-text {
+            color: #666;
+            font-size: 13px;
+            text-align: left;
+        }
+
+        /* 可点击的群号样式 */
+        .qq-number {
+            font-weight: 700;
+            color: #007aff;
+            display: block;
+            cursor: pointer;
+            text-decoration: underline;
+            margin-top: 2px;
+            transition: color 0.2s;
+        }
+
+        .qq-number:hover {
+            color: #005bb5;
+        }
+
+        /* 赞助小按钮 */
+        .sponsor-link {
+            padding: 8px 16px;
+            font-size: 13px;
+            color: #e67e22;
+            border: 1px solid #e67e22;
+            border-radius: 30px;
+            text-decoration: none;
+            font-weight: 600;
+            transition: all 0.2s;
+        }
+
+        .sponsor-link:hover {
+            background-color: #e67e22;
+            color: #fff;
+        }
+
+        /* 复制成功的提示泡泡 */
+        #toast {
+            visibility: hidden;
+            min-width: 100px;
+            background-color: #333;
+            color: #fff;
+            text-align: center;
+            border-radius: 8px;
+            padding: 8px;
+            position: absolute;
+            z-index: 1;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 12px;
+            opacity: 0;
+            transition: opacity 0.3s, visibility 0.3s;
+        }
+
+        #toast.show {
+            visibility: visible;
+            opacity: 1;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="card">
+        <h1>魔审资源下载</h1>
+        
+        <a href="https://qfile.qq.com/q/yVJlZ9yR6q" class="main-btn" target="_blank">🚀 立即下载资源</a>
+
+        <div class="footer">
+            <div class="qq-text">
+                官方交流群 (点击复制)<br>
+                <span class="qq-number" id="qqGroup" onclick="copyQQ()">1087272881</span>
+            </div>
+            
+            <a href="https://cdn.phototourl.com/uploads/2026-03-05-3ee00e3d-6db9-40ab-b08e-6ddf2d870364.png" 
+               class="sponsor-link" 
+               target="_blank">
+               ☕ 赞助入口
+            </a>
+        </div>
+
+        <div id="toast">已复制到剪贴板</div>
+    </div>
+
+    <script>
+        function copyQQ() {
+            const textToCopy = document.getElementById('qqGroup').innerText;
+            
+            // 使用现代剪贴板 API
+            navigator.clipboard.writeText(textToCopy).then(() => {
+                showToast();
+            }).catch(err => {
+                // 备用方案：防止浏览器不支持 API
+                const textArea = document.createElement("textarea");
+                textArea.value = textToCopy;
+                document.body.appendChild(textArea);
+                textArea.select();
+                document.execCommand('copy');
+                document.body.removeChild(textArea);
+                showToast();
+            });
+        }
+
+        function showToast() {
+            const toast = document.getElementById("toast");
+            toast.className = "show";
+            setTimeout(function(){ toast.className = toast.className.replace("show", ""); }, 2000);
+        }
+    </script>
+
+</body>
+</html>
