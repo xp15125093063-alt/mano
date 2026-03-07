@@ -70,7 +70,6 @@
             text-align: left;
         }
 
-        /* 可点击的群号样式 */
         .qq-number {
             font-weight: 700;
             color: #007aff;
@@ -78,15 +77,10 @@
             cursor: pointer;
             text-decoration: underline;
             margin-top: 2px;
-            transition: color 0.2s;
         }
 
-        .qq-number:hover {
-            color: #005bb5;
-        }
-
-        /* 赞助小按钮 */
-        .sponsor-link {
+        /* 赞助入口按钮 */
+        .sponsor-trigger {
             padding: 8px 16px;
             font-size: 13px;
             color: #e67e22;
@@ -94,37 +88,88 @@
             border-radius: 30px;
             text-decoration: none;
             font-weight: 600;
+            cursor: pointer;
             transition: all 0.2s;
         }
 
-        .sponsor-link:hover {
+        .sponsor-trigger:hover {
             background-color: #e67e22;
             color: #fff;
         }
 
-        /* 复制成功的提示泡泡 */
+        /* --- 弹窗样式 --- */
+        .modal-overlay {
+            display: none; /* 默认隐藏 */
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+
+        .modal {
+            background: white;
+            padding: 30px;
+            border-radius: 15px;
+            width: 280px;
+            text-align: center;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+        }
+
+        .modal h3 {
+            margin-top: 0;
+            font-size: 18px;
+            color: #444;
+        }
+
+        .option-btn {
+            display: block;
+            padding: 12px;
+            margin: 10px 0;
+            border-radius: 8px;
+            text-decoration: none;
+            font-weight: 600;
+            transition: opacity 0.2s;
+        }
+
+        .wechat-btn {
+            background-color: #07c160;
+            color: white;
+        }
+
+        .alipay-btn {
+            background-color: #1677ff;
+            color: white;
+        }
+
+        .cancel-btn {
+            color: #999;
+            font-size: 13px;
+            cursor: pointer;
+            margin-top: 10px;
+            display: inline-block;
+        }
+
+        /* 提示框样式 */
         #toast {
             visibility: hidden;
-            min-width: 100px;
             background-color: #333;
             color: #fff;
-            text-align: center;
+            padding: 8px 16px;
             border-radius: 8px;
-            padding: 8px;
-            position: absolute;
-            z-index: 1;
-            bottom: 20px;
+            position: fixed;
+            bottom: 30px;
             left: 50%;
             transform: translateX(-50%);
             font-size: 12px;
-            opacity: 0;
-            transition: opacity 0.3s, visibility 0.3s;
+            z-index: 2000;
         }
 
-        #toast.show {
-            visibility: visible;
-            opacity: 1;
-        }
+        #toast.show { visibility: visible; }
     </style>
 </head>
 <body>
@@ -137,43 +182,49 @@
         <div class="footer">
             <div class="qq-text">
                 官方交流群 (点击复制)<br>
-                <span class="qq-number" id="qqGroup" onclick="copyQQ()">1087272881</span>
+                <span class="qq-number" onclick="copyQQ('1087272881')">1087272881</span>
             </div>
             
-            <a href="https://cdn.phototourl.com/uploads/2026-03-05-3ee00e3d-6db9-40ab-b08e-6ddf2d870364.png" 
-               class="sponsor-link" 
-               target="_blank">
-               ☕ 赞助入口
-            </a>
+            <div class="sponsor-trigger" onclick="toggleModal(true)">☕ 赞助入口</div>
         </div>
-
-        <div id="toast">已复制到剪贴板</div>
     </div>
 
-    <script>
-        function copyQQ() {
-            const textToCopy = document.getElementById('qqGroup').innerText;
+    <div class="modal-overlay" id="sponsorModal">
+        <div class="modal">
+            <h3>请选择赞助方式</h3>
             
-            // 使用现代剪贴板 API
-            navigator.clipboard.writeText(textToCopy).then(() => {
-                showToast();
-            }).catch(err => {
-                // 备用方案：防止浏览器不支持 API
-                const textArea = document.createElement("textarea");
-                textArea.value = textToCopy;
-                document.body.appendChild(textArea);
-                textArea.select();
-                document.execCommand('copy');
-                document.body.removeChild(textArea);
-                showToast();
+            <a href="https://cdn.phototourl.com/uploads/2026-03-05-3ee00e3d-6db9-40ab-b08e-6ddf2d870364.png" 
+               class="option-btn wechat-btn" target="_blank">微信支付</a>
+            
+            <a href="https://img.remit.ee/api/file/BQACAgUAAyEGAASHRsPbAAERgV5prAo7RQpoNJsTd4UOebenoPOxKAACASAAAlIUYFVqCtOsSfVNtjoE.jpg" 
+               class="option-btn alipay-btn" target="_blank">支付宝支付</a>
+            
+            <div class="cancel-btn" onclick="toggleModal(false)">返回</div>
+        </div>
+    </div>
+
+    <div id="toast">已复制到剪贴板</div>
+
+    <script>
+        // 复制群号逻辑
+        function copyQQ(text) {
+            navigator.clipboard.writeText(text).then(() => {
+                const toast = document.getElementById("toast");
+                toast.className = "show";
+                setTimeout(() => { toast.className = ""; }, 2000);
             });
         }
 
-        function showToast() {
-            const toast = document.getElementById("toast");
-            toast.className = "show";
-            setTimeout(function(){ toast.className = toast.className.replace("show", ""); }, 2000);
+        // 弹窗显示/隐藏逻辑
+        function toggleModal(show) {
+            const modal = document.getElementById("sponsorModal");
+            modal.style.display = show ? "flex" : "none";
         }
+
+        // 点击遮罩层也可以关闭弹窗
+        document.getElementById("sponsorModal").onclick = function(e) {
+            if (e.target === this) toggleModal(false);
+        };
     </script>
 
 </body>
