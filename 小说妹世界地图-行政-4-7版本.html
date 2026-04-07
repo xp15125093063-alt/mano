@@ -1,0 +1,534 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>小说妹的世界地图 | 全量小说地标</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', Roboto, sans-serif; background: #f9f5f2; height: 100vh; overflow: hidden; }
+        .app-container { display: flex; flex-direction: column; height: 100vh; }
+        .header { background: rgba(255,245,240,0.92); backdrop-filter: blur(12px); border-bottom: 1px solid #ffddd3; padding: 0.8rem 1.5rem; z-index: 10; }
+        .title-section { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; justify-content: space-between; margin-bottom: 8px; }
+        .logo h1 { font-size: 1.7rem; font-weight: 500; background: linear-gradient(135deg, #d96c6c, #b14a5c); background-clip: text; -webkit-background-clip: text; color: transparent; }
+        .logo p { font-size: 0.7rem; color: #b48c7c; }
+        .search-area { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; margin-top: 6px; }
+        .search-box { flex: 2; min-width: 200px; display: flex; gap: 8px; }
+        .search-box input { flex: 1; padding: 10px 16px; border: 1px solid #ffcfc2; border-radius: 48px; font-size: 1rem; background: white; outline: none; }
+        .search-box input:focus { border-color: #d96c6c; box-shadow: 0 0 0 3px rgba(217,108,108,0.1); }
+        button { background: #e6c3b5; border: none; padding: 8px 18px; border-radius: 40px; font-weight: 500; color: #4e2e2a; cursor: pointer; transition: 0.2s; white-space: nowrap; }
+        button.primary { background: #d96c6c; color: white; box-shadow: 0 2px 6px rgba(217,108,108,0.3); }
+        button.primary:hover { background: #c45555; transform: translateY(-1px); }
+        button:hover { background: #dbb6a8; transform: translateY(-1px); }
+        .info-badge { font-size: 0.8rem; background: #fff0e6; padding: 5px 12px; border-radius: 30px; color: #b1624b; white-space: nowrap; }
+        .map-container { flex: 1; position: relative; }
+        #novelMap { height: 100%; width: 100%; background-color: #e8e2db; }
+
+        /* 下一集按钮样式 */
+        #nextEpisodeBtn {
+            position: absolute;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 1000;
+            background: #d96c6c;
+            color: white;
+            padding: 10px 24px;
+            border-radius: 50px;
+            font-weight: bold;
+            box-shadow: 0 4px 12px rgba(217,108,108,0.3);
+            display: none;
+        }
+
+        .add-panel { position: absolute; bottom: 20px; right: 20px; z-index: 1000; background: rgba(255,250,245,0.96); backdrop-filter: blur(8px); border-radius: 28px; width: 280px; box-shadow: 0 8px 24px rgba(0,0,0,0.12); border: 1px solid #ffe1d4; }
+        .panel-header { display: flex; justify-content: space-between; padding: 12px 18px; cursor: pointer; font-weight: 600; color: #a55541; border-bottom: 1px solid #ffddd3; }
+        .toggle-icon { font-size: 1.2rem; }
+        .panel-content { padding: 16px; display: none; flex-direction: column; gap: 12px; max-height: 380px; overflow-y: auto; }
+        .add-panel.open .panel-content { display: flex; }
+        .form-group { display: flex; flex-direction: column; gap: 6px; }
+        .form-group label { font-size: 0.75rem; font-weight: 600; color: #9b6b5a; }
+        .form-group input, .form-group textarea { padding: 8px 10px; border-radius: 20px; border: 1px solid #f0cfc2; background: white; font-size: 0.8rem; }
+        .coord-row { display: flex; gap: 8px; }
+        .small-btn { background: #f3e1d8; padding: 6px 12px; font-size: 0.7rem; border-radius: 30px; }
+        .reset-btn { background: #e6ccc1; color: #6b3e32; }
+        .toast-msg { position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%); background: #2c2a2aef; backdrop-filter: blur(8px); color: #ffefe5; padding: 8px 20px; border-radius: 40px; font-size: 0.85rem; z-index: 2000; pointer-events: none; opacity: 0; transition: 0.2s; white-space: nowrap; }
+        .leaflet-popup-content { min-width: 260px; max-width: 320px; max-height: 400px; overflow-y: auto; font-family: 'Segoe UI', system-ui; }
+        .popup-novel-item { margin-bottom: 12px; padding-bottom: 8px; border-bottom: 1px solid #f0e0d8; }
+        .popup-novel-title { font-weight: 700; color: #bc6f58; font-size: 1rem; }
+        .popup-city { font-size: 0.75rem; color: #6c4b3e; }
+        .popup-quote { font-style: italic; font-size: 0.75rem; color: #a1624b; border-left: 2px solid #ecc7bb; padding-left: 8px; margin-top: 4px; }
+        .badge-location { background: #f0dbd0; display: inline-block; font-size: 0.65rem; padding: 2px 6px; border-radius: 20px; margin-top: 5px; color: #7c4d3c; }
+        @media (max-width: 640px) { .search-area { flex-direction: column; align-items: stretch; } .add-panel { width: 260px; } .toast-msg { white-space: normal; width: 80%; } }
+    </style>
+</head>
+<body>
+<div class="app-container">
+    <div class="header">
+        <div class="title-section">
+            <div class="logo"><h1>📖 小说妹 · 世界地图</h1><p>全量收录 · 同城聚合 · 280+ 故事坐标</p></div>
+            <div class="info-badge" id="novelCount">✨ 加载中...</div>
+        </div>
+        <div class="search-area">
+            <div class="search-box"><input type="text" id="searchInput" placeholder="搜索小说名，例如《某某》" autocomplete="off"><button class="primary" id="searchBtn">🔍 寻城</button></div>
+            <button id="resetViewBtn">🗺️ 重置视角</button>
+            <div class="info-badge">💡 点击标记查看该地所有小说 | 可添加新地点</div>
+        </div>
+    </div>
+    <div class="map-container">
+        <div id="novelMap"></div>
+        <!-- 下一集按钮 -->
+        <button id="nextEpisodeBtn">⏭️ 下一集</button>
+    </div>
+    <div class="add-panel" id="addPanel">
+        <div class="panel-header" id="panelToggle"><span>✍️ + 添加小说地标</span><span class="toggle-icon">▼</span></div>
+        <div class="panel-content">
+            <div class="form-group"><label>📘 小说名</label><input type="text" id="novelName" placeholder="例: 某某"></div>
+            <div class="form-group"><label>🏙️ 城市</label><input type="text" id="cityName" placeholder="例: 南京"></div>
+            <div class="form-group"><label>💬 语录</label><textarea rows="2" id="quoteText" placeholder="经典句子"></textarea></div>
+            <div class="form-group"><label>📍 经纬度</label><div class="coord-row"><input type="text" id="lat" placeholder="纬度"><input type="text" id="lng" placeholder="经度"></div><button id="getCoordFromMapBtn" class="small-btn">🗺️ 地图拾取</button></div>
+            <button id="addNovelBtn" class="primary" style="background:#b14a5c;">✨ 添加</button>
+            <button id="resetDefaultBtn" class="reset-btn small-btn">🔄 恢复默认</button>
+        </div>
+    </div>
+</div>
+<div id="toastMsg" class="toast-msg"></div>
+
+<script>
+    let locationsData = [
+        { title: "某某", city: "南京", lat: 32.0603, lng: 118.7690, quote: "人间骄阳正好，风过林梢，彼时我们正当年少" },
+        { title: "一枝", city: "北京", lat: 39.9042, lng: 116.4074, quote: "17岁，宋野枝也想成为易青巍手下的一架钢琴" },
+        { title: "破云", city: "成都", lat: 30.5728, lng: 104.0668, quote: "最后一个愿望：我希望江停永远爱我" },
+        { title: "奇洛李维斯回信", city: "香港", lat: 22.3193, lng: 114.1694, quote: "奇洛李维斯，真的回信了" },
+        { title: "小潭山没有天文台", city: "澳门", lat: 22.1987, lng: 113.5439, quote: "费尔别克里终年大雪，冰川静寂" },
+        { title: "小潭山没有天文台", city: "费尔别克里(虚构)", lat: 60.0, lng: -140.0, quote: "虚构地点，坐标示意" },
+        { title: "be狂魔求生系统", city: "武汉", lat: 30.5928, lng: 114.3055, quote: "知许解夏，长长久久" },
+        { title: "我只喜欢你的人设", city: "武汉", lat: 30.5928, lng: 114.3055, quote: "你是我的文艺复兴" },
+        { title: "我只喜欢你的人设", city: "佛罗伦萨", lat: 43.7696, lng: 11.2558, quote: "只有玫瑰与你相称" },
+        { title: "可爱过敏原", city: "武汉", lat: 30.5928, lng: 114.3055, quote: "摩尔曼斯克是北极圈唯一的不冻港" },
+        { title: "可爱过敏原", city: "摩尔曼斯克", lat: 68.9585, lng: 33.0827, quote: "你方向感太差了，就站在原地等我吧" },
+        { title: "楚天以南", city: "武汉", lat: 30.5928, lng: 114.3055, quote: "对潇潇暮雨洒江天" },
+        { title: "楚天以南", city: "贵州铜仁", lat: 27.6906, lng: 109.1888, quote: "楚天在上" },
+        { title: "楚天以南", city: "澳门", lat: 22.1987, lng: 113.5439, quote: "楚天在上" },
+        { title: "放学等我", city: "冰岛", lat: 64.1466, lng: -21.9426, quote: "喜欢你" },
+        { title: "放学等我", city: "宁波", lat: 29.8683, lng: 121.5440, quote: "喜欢你" },
+        { title: "放学等我", city: "江西南城", lat: 27.5689, lng: 116.6370, quote: "喜欢你" },
+        { title: "二哈和他的白猫师尊", city: "杭州南屏山", lat: 30.2282, lng: 120.1400, quote: "愿你有好梦" },
+        { title: "二哈和他的白猫师尊", city: "成都", lat: 30.5728, lng: 104.0668, quote: "我喜欢你，不是徒弟对师尊的喜欢" },
+        { title: "魔道祖师", city: "苏州", lat: 31.2990, lng: 120.5853, quote: "魏婴，跟我回姑苏" },
+        { title: "魔道祖师", city: "宜昌", lat: 30.6905, lng: 111.2908, quote: "魏婴，跟我回姑苏" },
+        { title: "魔道祖师", city: "孝感", lat: 30.9170, lng: 113.9289, quote: "魏婴，跟我回姑苏" },
+        { title: "我在惊悚游戏里封神", city: "上海", lat: 31.2304, lng: 121.4737, quote: "未来的你埋葬了你" },
+        { title: "十日终焉", city: "青岛", lat: 36.0671, lng: 120.3826, quote: "每个人都有属于自己的那条路" },
+        { title: "十日终焉", city: "济南", lat: 36.6512, lng: 117.1201, quote: "每个人都有属于自己的那条路" },
+        { title: "从万米高空降临", city: "北京大兴机场", lat: 39.5095, lng: 116.4105, quote: "甚高频相遇，他是我的爱人" },
+        { title: "天官赐福", city: "云南大理巍山", lat: 25.2418, lng: 100.3039, quote: "为你战死是我至高无上的荣耀" },
+        { title: "恒星时刻", city: "北京", lat: 39.9042, lng: 116.4074, quote: "做你的乐手，你做我的主唱" },
+        { title: "七芒星", city: "石家庄", lat: 38.0428, lng: 114.5149, quote: "撕开云雾，你就是光" },
+        { title: "敬山水", city: "安徽和县", lat: 31.7443, lng: 118.3518, quote: "徐正清，我把自己要回来了" },
+        { title: "一屋暗灯", city: "多伦多", lat: 43.6532, lng: -79.3832, quote: "宋星阑 我想给你机会" },
+        { title: "欲言难止", city: "北京", lat: 39.9042, lng: 116.4074, quote: "十七朵洋桔梗送给最爱的十七号" },
+        { title: "吞海", city: "天津", lat: 39.0841, lng: 117.2009, quote: "你的名字永刻地底" },
+        { title: "吞海", city: "云南", lat: 25.0443, lng: 102.7097, quote: "你的名字永刻地底" },
+        { title: "吞海", city: "缅甸", lat: 19.7633, lng: 96.0785, quote: "你的名字永刻地底" },
+        { title: "我喜欢你的信息素", city: "内蒙古", lat: 44.0935, lng: 113.9448, quote: "路星辞我帅不帅？你最好看" },
+        { title: "莲花楼", city: "扬州", lat: 32.3932, lng: 119.4129, quote: "一念心清净莲花处处开" },
+        { title: "纸飞机", city: "斯里兰卡", lat: 6.9271, lng: 79.8612, quote: "永远都是夏天的地方" },
+        { title: "铜雀锁金钗", city: "杭州", lat: 30.2741, lng: 120.1551, quote: "死生契阔，与子成说" },
+        { title: "撒野", city: "鞍山", lat: 41.1077, lng: 122.9894, quote: "你是我意料之外的意外" },
+        { title: "默读", city: "北京", lat: 39.9042, lng: 116.4074, quote: "我不是凝视深渊的人" },
+        { title: "总裁在上", city: "英国", lat: 51.5074, lng: -0.1278, quote: "这一嫁，你这一生都是我宫欧的了" },
+        { title: "针锋对决", city: "北京", lat: 39.9042, lng: 116.4074, quote: "长安街十车道，总有一条是我们碰不上的" },
+        { title: "盗墓笔记", city: "杭州", lat: 30.2741, lng: 120.1551, quote: "桃李春风一杯酒，江湖夜雨十年灯" },
+        { title: "盗墓笔记", city: "墨脱", lat: 29.3264, lng: 95.3322, quote: "我的归属我的此生所属" },
+        { title: "人鱼陷落", city: "洪都拉斯", lat: 14.0723, lng: -87.1921, quote: "白刺玫的根须腐蚀我的大脑" },
+        { title: "附加遗产", city: "北京", lat: 39.9042, lng: 116.4074, quote: "我撒过很多谎，但我爱你是真的" },
+        { title: "谁把谁当真", city: "北京", lat: 39.9042, lng: 116.4074, quote: "My sweet lamb" },
+        { title: "谁把谁当真", city: "纽约", lat: 40.7128, lng: -74.0060, quote: "My sweet lamb" },
+        { title: "特殊人格", city: "广州荔湾区", lat: 23.1252, lng: 113.2440, quote: "每个人心底都有秘密" },
+        { title: "旧故新长", city: "新西兰", lat: -36.8485, lng: 174.7633, quote: "拥抱世界的第一步" },
+        { title: "旧故新长", city: "宁城(内蒙古)", lat: 41.6000, lng: 119.2500, quote: "拥抱世界的第一步" },
+        { title: "跨界演员", city: "重庆", lat: 29.5582, lng: 106.5050, quote: "你怪我出现的太晚" },
+        { title: "残次品", city: "外星球", lat: 0, lng: 0, quote: "科幻背景" },
+        { title: "别来无恙", city: "福州", lat: 26.0745, lng: 119.2965, quote: "欢迎你来到榕城，我叫庄凡心" },
+        { title: "你是我的终身取景器", city: "吉林临江", lat: 41.8111, lng: 126.9181, quote: "我拍尽世间万千光影" },
+        { title: "判官", city: "南京栖霞山", lat: 32.1584, lng: 118.9543, quote: "你其实和离开的人好好道过别" },
+        { title: "判官", city: "西安", lat: 34.3416, lng: 108.9398, quote: "于某个长夜" },
+        { title: "FOG", city: "上海", lat: 31.2304, lng: 121.4737, quote: "不喜欢的人的心机才是心机" },
+        { title: "君有疾否", city: "安徽淮南", lat: 32.6255, lng: 116.9998, quote: "楚大人你是不是有病？" },
+        { title: "君有疾否", city: "北京", lat: 39.9042, lng: 116.4074, quote: "君有疾否，相思无医" },
+        { title: "余污", city: "山东临沂", lat: 35.1047, lng: 118.3564, quote: "相爱是你，相杀是你" },
+        { title: "入戏", city: "上海", lat: 31.2304, lng: 121.4737, quote: "英雄抱着恶徒站在白雪河水里号叫" },
+        { title: "Shiva", city: "加尔各答", lat: 22.5726, lng: 88.3639, quote: "恒河水，我的泪" },
+        { title: "病案本", city: "上海", lat: 31.2304, lng: 121.4737, quote: "此地长眠者 声名水上书" },
+        { title: "火焰戎装", city: "北京", lat: 39.9042, lng: 116.4074, quote: "我喜欢你，一心一（蜥）蜴" },
+        { title: "全知读者视角", city: "首尔", lat: 37.5665, lng: 126.9780, quote: "这是拯救某人、毁灭某人的故事" },
+        { title: "危险人格", city: "上海", lat: 31.2304, lng: 121.4737, quote: "每个人心底都有秘密" },
+        { title: "潇潇雨声迟", city: "北京", lat: 39.9042, lng: 116.4074, quote: "这样大的北京，唯独没有阮雨声" },
+        { title: "伪装学渣", city: "北京", lat: 39.9042, lng: 116.4074, quote: "一起去啊，更远的地方" },
+        { title: "伪装学渣", city: "长春", lat: 43.8171, lng: 125.3235, quote: "一起去啊，更远的地方" },
+        { title: "悬日", city: "冰岛", lat: 64.1466, lng: -21.9426, quote: "一无所有的我们曾拥有悬日" },
+        { title: "悬日", city: "曼哈顿", lat: 40.7831, lng: -73.9712, quote: "悬日" },
+        { title: "悬日", city: "西雅图", lat: 47.6062, lng: -122.3321, quote: "悬日" },
+        { title: "千里江陵", city: "广东", lat: 23.1291, lng: 113.2644, quote: "师傅，等等我" },
+        { title: "台风眼", city: "北京", lat: 39.9042, lng: 116.4074, quote: "夜空高原 你如钻石" },
+        { title: "全球高考", city: "哈尔滨", lat: 45.8038, lng: 126.5340, quote: "世界灿烂盛大，欢迎回家" },
+        { title: "全球高考", city: "北京", lat: 39.9042, lng: 116.4074, quote: "愿我们在硝烟尽散的世界重逢" },
+        { title: "你却爱着一个他", city: "北京", lat: 39.9042, lng: 116.4074, quote: "我简隋英哪样不是出类拔萃的？" },
+        { title: "恰似寒光遇骄阳", city: "挪威", lat: 59.9139, lng: 10.7522, quote: "余生愿你财色兼收" },
+        { title: "碎玉投珠", city: "北京", lat: 39.9042, lng: 116.4074, quote: "师哥，玫瑰到了花期，我很想你" },
+        { title: "重回我爸高中时代", city: "杭州", lat: 30.2741, lng: 120.1551, quote: "这世界就像一张可以任意涂抹的白纸" },
+        { title: "欲言难止", city: "沈阳", lat: 41.8045, lng: 123.4317, quote: "天空中的上校有了挂念的17号" },
+        { title: "两个老妖怪", city: "安徽宿州", lat: 33.6462, lng: 116.9785, quote: "只恋市井吵闹" },
+        { title: "营业悖论", city: "北京", lat: 39.9042, lng: 116.4074, quote: "月亮是最高级别的褒奖" },
+        { title: "针锋对决", city: "成都", lat: 30.5728, lng: 104.0668, quote: "商海波诡云谲" },
+        { title: "针锋对决", city: "新加坡", lat: 1.3521, lng: 103.8198, quote: "商海波诡云谲" },
+        { title: "附加遗产", city: "香格里拉", lat: 27.8259, lng: 99.7088, quote: "我说过很多谎，但我爱你是真的" },
+        { title: "偷风不偷月", city: "宁波", lat: 29.8683, lng: 121.5440, quote: "如意琴头，万事如意" },
+        { title: "蓄意逐风", city: "广东", lat: 23.1291, lng: 113.2644, quote: "我的第1个秋天到了" },
+        { title: "失忆后多了的前男友", city: "广东荔枝广场", lat: 23.1291, lng: 113.2644, quote: "祝生自由，祝死自由" },
+        { title: "跌落暮色", city: "江西", lat: 27.6139, lng: 115.8935, quote: "我从十七楼跳了下去" },
+        { title: "地球上线", city: "广州", lat: 23.1291, lng: 113.2644, quote: "人类的存在即为合理" },
+        { title: "地球上线", city: "苏州", lat: 31.2990, lng: 120.5853, quote: "人类的存在即为合理" },
+        { title: "地球上线", city: "北京", lat: 39.9042, lng: 116.4074, quote: "人类的存在即为合理" },
+        { title: "地球上线", city: "重庆", lat: 29.5582, lng: 106.5050, quote: "人类的存在即为合理" },
+        { title: "白日事故", city: "南极", lat: -75.0, lng: 0.0, quote: "在南极的第164天，想到你" },
+        { title: "女校", city: "上海", lat: 31.2304, lng: 121.4737, quote: "反正你我都孤独" },
+        { title: "女校", city: "英国", lat: 51.5074, lng: -0.1278, quote: "反正你我都孤独" },
+        { title: "让你科普玄学，没让你直播捉鬼", city: "北京", lat: 39.9042, lng: 116.4074, quote: "一枚许前世，一枚佑今生" },
+        { title: "德萨罗人鱼", city: "挪威", lat: 59.9139, lng: 10.7522, quote: "没有任何人能伤害你" },
+        { title: "情蛊", city: "贵州黔东南", lat: 26.6477, lng: 106.6302, quote: "我不会下蛊" },
+        { title: "情蛊", city: "盐城", lat: 33.3492, lng: 120.1631, quote: "我不会下蛊" },
+        { title: "玫瑰废墟", city: "浅岸市(虚构)", lat: 31.0, lng: 121.0, quote: "答爱温" },
+        { title: "未得灿烂", city: "北京", lat: 39.9042, lng: 116.4074, quote: "未得灿烂 终得灿烂" },
+        { title: "入戏", city: "广州", lat: 23.1291, lng: 113.2644, quote: "陪我认真跳一支舞" },
+        { title: "亡瘾", city: "漠河", lat: 52.9745, lng: 122.5377, quote: "带我走吧，天亮就出发" },
+        { title: "今夜我在德令哈", city: "西藏", lat: 29.6469, lng: 91.1406, quote: "我有预感 他一定会喜欢我的" },
+        { title: "今夜我在德令哈", city: "重庆", lat: 29.5582, lng: 106.5050, quote: "我有预感" },
+        { title: "学乖", city: "北京", lat: 39.9042, lng: 116.4074, quote: "向吾王献上权杖" },
+        { title: "诡秘之主", city: "四川乐山", lat: 29.5521, lng: 103.7654, quote: "不属于这个时代的愚者" },
+        { title: "红白囍", city: "圣彼得堡", lat: 59.9311, lng: 30.3609, quote: "得遇淑人柳暗花明" },
+        { title: "红白囍", city: "安徽合肥", lat: 31.8206, lng: 117.2272, quote: "得遇淑人柳暗花明" },
+        { title: "这题超纲了", city: "吉林", lat: 43.8964, lng: 125.3243, quote: "十七岁的少年，什么感情都来得很纯粹" },
+        { title: "C语言修仙", city: "北京中关村", lat: 39.9836, lng: 116.3189, quote: "修仙与代码" },
+        { title: "垂耳执事", city: "金三角", lat: 20.0, lng: 100.0, quote: "言言，爱你直到生命尽头" },
+        { title: "垂耳执事", city: "太平洋", lat: 0, lng: -160, quote: "爱你直到生命尽头" },
+        { title: "垂耳执事", city: "怀宁", lat: 30.7361, lng: 116.8286, quote: "爱你直到生命尽头" },
+        { title: "藏南晚星", city: "拉萨", lat: 29.6469, lng: 91.1406, quote: "过了唐古拉山，就把杂念留在外面" },
+        { title: "伏特加与曼特宁", city: "威海", lat: 37.5135, lng: 122.1205, quote: "漂泊不羁的风，爱上一棵沉默孤僻的柏树" },
+        { title: "囚于永夜", city: "北京", lat: 39.9042, lng: 116.4074, quote: "永远太缥缈了，在一起一辈子吧" },
+        { title: "唇间", city: "斯里兰卡", lat: 6.9271, lng: 79.8612, quote: "时间那么美，我不想只盯着伤疤看" },
+        { title: "渡夏天", city: "广州", lat: 23.1291, lng: 113.2644, quote: "夏日的风" },
+        { title: "飞行士", city: "大理", lat: 25.6065, lng: 100.2676, quote: "我告诉风了，风没有告诉你吗" },
+        { title: "陈滩旧梦", city: "南京", lat: 32.0603, lng: 118.7690, quote: "玉树流光照后庭" },
+        { title: "纽约往事", city: "纽约", lat: 40.7128, lng: -74.0060, quote: "纽约旧梦" },
+        { title: "废材又怎么样照样吊打你", city: "北京", lat: 39.9042, lng: 116.4074, quote: "祝指挥一路顺风" },
+        { title: "重生之将门毒后", city: "洛阳", lat: 34.6197, lng: 112.4542, quote: "来娶你了沈娇娇" },
+        { title: "穿堂惊掠琵琶声", city: "广州", lat: 23.1291, lng: 113.2644, quote: "买束花给你，可路口的花店没开" },
+        { title: "破晓", city: "天津", lat: 39.0841, lng: 117.2009, quote: "黑夜的雨珠是罪犯的同谋" },
+        { title: "全职高手", city: "广州", lat: 23.1291, lng: 113.2644, quote: "我们还有无数个属于蓝雨的夏天" },
+        { title: "全职高手", city: "杭州", lat: 30.2741, lng: 120.1551, quote: "我们还有无数个属于蓝雨的夏天" },
+        { title: "海若有因", city: "北京", lat: 39.9042, lng: 116.4074, quote: "海若有因" },
+        { title: "不要在垃圾桶里捡男朋友", city: "未指定", lat: 0, lng: 0, quote: "没有他的世界，我哪里都不去" },
+        { title: "识途", city: "甘肃", lat: 35.7518, lng: 104.2861, quote: "恨比爱容易，爱比恨伟大" },
+        { title: "娘娘腔", city: "北京", lat: 39.9042, lng: 116.4074, quote: "我想要你一辈子安心" },
+        { title: "娘娘腔", city: "深圳", lat: 22.5431, lng: 114.0579, quote: "我想要你一辈子安心" },
+        { title: "荷潭", city: "北京", lat: 39.9042, lng: 116.4074, quote: "无论多少次相遇，我的心脏依旧因你战栗" },
+        { title: "难哄", city: "宜荷(模糊)", lat: 30.0, lng: 120.0, quote: "难哄" },
+        { title: "难哄", city: "南芜(模糊)", lat: 31.0, lng: 118.0, quote: "难哄" },
+        { title: "太平长安", city: "西安", lat: 34.3416, lng: 108.9398, quote: "太平长安" },
+        { title: "岁月间", city: "苏州", lat: 31.2990, lng: 120.5853, quote: "岁月间" },
+        { title: "夫人你马甲又掉了", city: "宁海", lat: 29.2833, lng: 121.4333, quote: "山有木兮卿有意" },
+        { title: "逆爱", city: "江苏无锡", lat: 31.4912, lng: 120.3119, quote: "帅帅你就负责这个世界" },
+        { title: "人渣反派自救系统", city: "穹庐山", lat: 29.0, lng: 112.0, quote: "即便为师出事" },
+        { title: "龙族", city: "东京", lat: 35.6895, lng: 139.6917, quote: "迎着阳光盛大逃亡" },
+        { title: "黄金笼", city: "俄罗斯", lat: 55.7558, lng: 37.6173, quote: "黄金笼" },
+        { title: "今日离港", city: "上海", lat: 31.2304, lng: 121.4737, quote: "我希望你是我的勃朗峰" },
+        { title: "今日离港", city: "香港", lat: 22.3193, lng: 114.1694, quote: "我希望你是我的勃朗峰" },
+        { title: "听说你很难追", city: "稻城亚丁", lat: 28.6609, lng: 100.3318, quote: "江绪，我和你 没有以后了" },
+        { title: "大雾", city: "长白山天池", lat: 42.0, lng: 128.0, quote: "照片里，林雾得逞地笑" },
+        { title: "难言关系", city: "山西晋城", lat: 35.4904, lng: 112.8518, quote: "我好想念阳光，好想念你" },
+        { title: "树犹如此", city: "圣巴巴拉", lat: 34.4208, lng: -119.6982, quote: "树犹如此" },
+        { title: "以你的名字呼唤我", city: "意大利里维埃拉", lat: 44.0, lng: 9.0, quote: "以你的名字呼唤我" },
+        { title: "初三的六一儿童节", city: "香港", lat: 22.3193, lng: 114.1694, quote: "如果你有事，我不会独活" },
+        { title: "京洛再无佳人", city: "北京", lat: 39.9042, lng: 116.4074, quote: "西棠，之后京洛再无佳人" },
+        { title: "白雪之前", city: "广州", lat: 23.1291, lng: 113.2644, quote: "白雪之前" },
+        { title: "你的雪人能活多久", city: "济南", lat: 36.6512, lng: 117.1201, quote: "爱会比死亡先降临" },
+        { title: "最近睡得很坏", city: "深圳", lat: 22.5431, lng: 114.0579, quote: "其实我最近睡得很坏" },
+        { title: "洄天", city: "上海", lat: 31.2304, lng: 121.4737, quote: "追随你一直是我平生的梦想" },
+        { title: "两A相逢必有一O", city: "北海道", lat: 43.0642, lng: 141.3469, quote: "两A相逢" },
+        { title: "情话指南｜落水月亮", city: "俄罗斯", lat: 55.7558, lng: 37.6173, quote: "十一年，始终如一" },
+        { title: "AWM", city: "上海", lat: 31.2304, lng: 121.4737, quote: "老将不死，薪火相传" },
+        { title: "长街", city: "长沙", lat: 28.2282, lng: 112.9388, quote: "垫着坐 地上凉" },
+        { title: "我喜欢你男朋友很久了", city: "科隆", lat: 50.9375, lng: 6.9603, quote: "我喜欢你男朋友很久了" },
+        { title: "告白", city: "北京", lat: 39.9042, lng: 116.4074, quote: "夏天永远热烈，我爱的少年也是" },
+        { title: "小明是怎么死的", city: "黑龙江", lat: 45.8038, lng: 126.5340, quote: "喜欢是自私的，那不是爱啊" },
+        { title: "全网爆红后我和富豪前男友复合了", city: "杭州", lat: 30.2741, lng: 120.1551, quote: "全网爆红" },
+        { title: "全网爆红后我和富豪前男友复合了", city: "湛江", lat: 21.2707, lng: 110.3593, quote: "全网爆红" },
+        { title: "全网爆红后我和富豪前男友复合了", city: "成都", lat: 30.5728, lng: 104.0668, quote: "全网爆红" },
+        { title: "大雾", city: "沈阳", lat: 41.8045, lng: 123.4317, quote: "大雾" },
+        { title: "落观音", city: "香港太平山", lat: 22.2750, lng: 114.1490, quote: "香港有几百万人，情爱只是小事" },
+        { title: "灰塔笔记", city: "剑桥", lat: 52.2053, lng: 0.1218, quote: "亲爱的，别管什么女人，嫁给我吧" },
+        { title: "烟袋斜街10号", city: "北京什刹海", lat: 39.9354, lng: 116.3850, quote: "烟袋斜街" },
+        { title: "多血质和抑郁质", city: "北海道", lat: 43.0642, lng: 141.3469, quote: "柏原崇和藤井树都不归你" },
+        { title: "我真不是明君", city: "扬州", lat: 32.3932, lng: 119.4129, quote: "我真不是明君" },
+        { title: "缺氧", city: "重庆", lat: 29.5582, lng: 106.5050, quote: "请把我带回生病前的时光吧" },
+        { title: "恒温", city: "重庆", lat: 29.5582, lng: 106.5050, quote: "还有什么是比埋葬在旅途上更浪漫的事情吗？" },
+        { title: "年少无名", city: "成都", lat: 30.5728, lng: 104.0668, quote: "鸟在天上 我们一直在一起" },
+        { title: "下课", city: "广州", lat: 23.1291, lng: 113.2644, quote: "下课" },
+        { title: "尾钩", city: "北京大兴机场", lat: 39.5095, lng: 116.4105, quote: "如果你说好，我就过来" },
+        { title: "尾钩", city: "荷兰", lat: 52.0907, lng: 5.1214, quote: "往后一辈子，一起飞吧" },
+        { title: "南部档案", city: "南阳", lat: 32.9907, lng: 112.5284, quote: "你算错了，我们是一起回来的" },
+        { title: "南部档案", city: "厦门", lat: 24.4798, lng: 118.0894, quote: "厦门我没什么挂念" },
+        { title: "南部档案", city: "马六甲", lat: 2.1896, lng: 102.2500, quote: "南部档案" },
+        { title: "我在精神病院学斩神", city: "江苏", lat: 33.0, lng: 119.0, quote: "斩神" },
+        { title: "斩神", city: "云南洱海", lat: 25.8453, lng: 100.2561, quote: "苍山为证，洱海为媒" },
+        { title: "别和我装穷", city: "重庆", lat: 29.5582, lng: 106.5050, quote: "别和我装穷" },
+        { title: "破镜", city: "山东", lat: 36.0, lng: 118.0, quote: "镜中界，非虚实，莫存在" },
+        { title: "金刚不坏", city: "上海", lat: 31.2304, lng: 121.4737, quote: "人靠理智可以活得很正确，却不一定能活得快乐" },
+        { title: "差三岁", city: "成都", lat: 30.5728, lng: 104.0668, quote: "一起喝到落日夕阳无边醉" },
+        { title: "烈火浇愁", city: "昆明东川区", lat: 26.0820, lng: 103.1580, quote: "朕说过要告祭四方，娶你过门" },
+        { title: "烈火浇愁", city: "福建永安", lat: 25.9419, lng: 117.3654, quote: "朕说过要告祭四方" },
+        { title: "25小时", city: "布达佩斯", lat: 47.4979, lng: 19.0402, quote: "25小时" },
+        { title: "咎由自取", city: "成都", lat: 30.5728, lng: 104.0668, quote: "我有的东西不多，但我有的全都给你了" },
+        { title: "穿进修仙游戏后与男主相追相杀", city: "西安", lat: 34.3416, lng: 108.9398, quote: "天朗气清，你我团圆" },
+        { title: "月下的影", city: "广州", lat: 23.1291, lng: 113.2644, quote: "为什么我们走散了" },
+        { title: "缺氧", city: "重庆白象居", lat: 29.5582, lng: 106.5050, quote: "如果我也一不小心变成了星星" },
+        { title: "共生序章", city: "海口", lat: 20.0174, lng: 110.3492, quote: "少年的第一次心动，总是纯真又可贵" },
+        { title: "深度缺氧", city: "泸州江阳", lat: 28.8711, lng: 105.4433, quote: "深度缺氧" },
+        { title: "她曾是枯萎的秋", city: "佛山", lat: 23.0215, lng: 113.1214, quote: "她曾是枯萎的秋" },
+        { title: "洛希极限", city: "北京", lat: 39.9042, lng: 116.4074, quote: "你诀别，我应允" },
+        { title: "子夜鸮", city: "北京", lat: 39.9042, lng: 116.4074, quote: "I always remember that rainy night" },
+        { title: "坠落", city: "上海", lat: 31.2304, lng: 121.4737, quote: "坠落" },
+        { title: "剑来", city: "龙泉", lat: 28.0742, lng: 119.1416, quote: "天道崩塌，我陈平安唯有一剑" },
+        { title: "今天巴黎有雨", city: "巴黎", lat: 48.8566, lng: 2.3522, quote: "今天巴黎有雨" },
+        { title: "今天巴黎有雨", city: "日内瓦", lat: 46.2044, lng: 6.1432, quote: "今天巴黎有雨" },
+        { title: "荒野植被", city: "未指定", lat: 0, lng: 0, quote: "原来荒野上已经茶翁郁郁铺满植被" },
+        { title: "别读博，会脱单", city: "北京", lat: 39.9042, lng: 116.4074, quote: "时时刻刻都能感觉到幸福的人才是天才" },
+        { title: "提灯看刺刀", city: "北京", lat: 39.9042, lng: 116.4074, quote: "要是我活着出来了，就告诉你实话" },
+        { title: "提灯看刺刀", city: "贵州", lat: 26.6477, lng: 106.6302, quote: "要是我活着出来了" },
+        { title: "灯花笑", city: "长安", lat: 34.3416, lng: 108.9398, quote: "灯芯爆花引为吉兆" },
+        { title: "沙山早月", city: "敦煌", lat: 40.1421, lng: 94.6620, quote: "沙山早月" },
+        { title: "City of Angels", city: "曼谷", lat: 13.7367, lng: 100.5231, quote: "人是漂泊的鸟，爱是宜居的岛" },
+        { title: "年少无名", city: "宜宾", lat: 28.7518, lng: 104.6433, quote: "我长大会失去你吗 鸟会离开天空吗" },
+        { title: "论以貌取人的下场", city: "北京", lat: 39.9042, lng: 116.4074, quote: "跟我一起拯救世界就好" },
+        { title: "飞行士", city: "大理", lat: 25.6065, lng: 100.2676, quote: "回到世界末日吻你" },
+        { title: "我为你翻山越岭", city: "兰州", lat: 36.0611, lng: 103.8343, quote: "你愿意跟我回兰州吗" },
+        { title: "镇魂", city: "昆仑山", lat: 36.0, lng: 80.0, quote: "邓林之阴初见昆仑君" },
+        { title: "阿吱阿吱", city: "黄浦江", lat: 31.2355, lng: 121.4763, quote: "阿吱阿吱" },
+        { title: "我为你翻山越岭", city: "温州", lat: 27.9949, lng: 120.6994, quote: "我为你翻山越岭，却无心看风景" },
+        { title: "标记我一下", city: "北京", lat: 39.9042, lng: 116.4074, quote: "他们牵着手穿过人群" },
+        { title: "灰大叔与混血王子", city: "伦敦", lat: 51.5074, lng: -0.1278, quote: "是情侣，是爱人，是夫妻" },
+        { title: "你再装呢！", city: "成都", lat: 30.5728, lng: 104.0668, quote: "没耍你 是想追你" },
+        { title: "江医生他怀了死对头的崽", city: "北京", lat: 39.9042, lng: 116.4074, quote: "我是真的，非常喜欢你" },
+        { title: "犯罪心理", city: "北京", lat: 39.9042, lng: 116.4074, quote: "善良的人和美好的心灵，永远都在那里" },
+        { title: "旬白", city: "泰州", lat: 32.4555, lng: 119.9250, quote: "我不会再失去你了" },
+        { title: "旬白", city: "长春", lat: 43.8171, lng: 125.3235, quote: "我不会再失去你了" },
+        { title: "暗恋这件难过的小事", city: "沈阳", lat: 41.8045, lng: 123.4317, quote: "To win the word." }
+    ];
+
+    let validData = locationsData.filter(l => l.lat && l.lng && !isNaN(l.lat) && !isNaN(l.lng) && !(l.lat === 0 && l.lng === 0));
+
+    let map, markerGroup, markerList;
+    let currentSearchResult = [];
+    let currentIndex = 0;
+    const nextBtn = document.getElementById('nextEpisodeBtn');
+
+    // ——————————————————————————————————————
+    // 终极稳定优化：无灰块、无闪烁、无撕裂、不重复、不漂移
+    // ——————————————————————————————————————
+    function initMap() {
+        map = L.map('novelMap', {
+            // 强制锁定世界范围，杜绝重复/空白
+            maxBounds: [
+                [-90, -180],
+                [90, 180]
+            ],
+            maxBoundsViscosity: 1.0,
+            worldCopyJump: false,
+            
+            // 关闭所有会导致闪屏/灰块的动画
+            zoomAnimation: false,
+            fadeAnimation: false,
+            markerZoomAnimation: false,
+            inertia: false,           // 关闭惯性滑动（最容易导致空白）
+            inertiaDeceleration: 0,
+            
+            // 强制预加载周边瓦片，彻底消除灰色块
+            keepBuffer: 10,
+            updateWhenIdle: true,    // 仅静止时更新，避免渲染冲突
+            updateWhenZooming: false
+        });
+
+        // 初始视角：太平洋居中（稳定无抖动）
+        map.setView([0, 180], 2);
+
+        // 地图瓦片（保持你原来的源，只加稳定参数）
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+            attribution: '&copy; 小说妹 & OpenStreetMap',
+            maxZoom: 19,
+            minZoom: 2,
+            noWrap: true,        // 禁止地图重复
+            crossOrigin: true,   // 解决跨域渲染异常
+            keepBuffer: 10
+        }).addTo(map);
+
+        // 地图加载完成后再渲染标记，避免顺序错乱
+        map.whenReady(() => {
+            console.log("✅ 地图稳定加载完成");
+        });
+    }
+
+    function escapeHtml(str) {
+        return str.replace(/[&<>]/g, m => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;' }[m]));
+    }
+
+    function refreshMarkers() {
+        if (markerGroup) markerGroup.clearLayers();
+        markerGroup = L.layerGroup().addTo(map);
+        const groupMap = new Map();
+        validData.forEach(loc => {
+            const key = `${loc.lat},${loc.lng}`;
+            if (!groupMap.has(key)) groupMap.set(key, []);
+            groupMap.get(key).push(loc);
+        });
+        markerList = [];
+        for (let [coord, locs] of groupMap.entries()) {
+            const [lat, lng] = coord.split(',').map(Number);
+            let popupHtml = `<div style="max-height:320px;overflow-y:auto;">`;
+            locs.forEach(l => {
+                popupHtml += `<div class="popup-novel-item"><div class="popup-novel-title">📖 ${escapeHtml(l.title)}</div><div class="popup-city">📍 ${escapeHtml(l.city)}</div><div class="popup-quote">“${escapeHtml(l.quote)}”</div></div>`;
+            });
+            popupHtml += `<div class="badge-location">✨ 该地点共有 ${locs.length} 部作品</div></div>`;
+            const marker = L.marker([lat, lng]).bindPopup(popupHtml);
+            marker.addTo(markerGroup);
+            markerList.push({ marker, locations: locs });
+        }
+        const uniqueNovels = new Set(validData.map(l => l.title));
+        document.getElementById('novelCount').innerHTML = `📍 ${markerList.length} 个聚合点 | ${uniqueNovels.size} 部小说`;
+    }
+
+    function searchNovelAndFly(keyword) {
+        if (!keyword.trim()) { showToast("请输入小说名"); return; }
+        const searchKey = keyword.replace(/[《》]/g, '').trim().toLowerCase();
+        
+        currentSearchResult = validData.filter(item => 
+            item.title.toLowerCase().includes(searchKey)
+        );
+
+        if (currentSearchResult.length === 0) {
+            nextBtn.style.display = 'none';
+            showToast(`未找到「${keyword}」`);
+            return;
+        }
+
+        currentIndex = 0;
+        showCurrentLocation();
+        nextBtn.style.display = currentSearchResult.length > 1 ? 'block' : 'none';
+        showToast(`已找到《${currentSearchResult[0].title}》，共 ${currentSearchResult.length} 个地点`);
+    }
+
+    function showCurrentLocation() {
+        const loc = currentSearchResult[currentIndex];
+        map.flyTo([loc.lat, loc.lng], 12);
+        const group = markerList.find(g => 
+            g.locations.some(item => 
+                item.lat === loc.lat && item.lng === loc.lng && item.title === loc.title
+            )
+        );
+        if (group) group.marker.openPopup();
+    }
+
+    nextBtn.addEventListener('click', () => {
+        if (currentSearchResult.length <= 1) return;
+        currentIndex = (currentIndex + 1) % currentSearchResult.length;
+        showCurrentLocation();
+        const loc = currentSearchResult[currentIndex];
+        showToast(`已切换至：${loc.city}`);
+    });
+
+    // 重置视角 → 回到太平洋中心全景
+    function resetMapView() {
+        map.flyTo([0, 180], 2);
+        nextBtn.style.display = 'none';
+        showToast("已重置为太平洋全景");
+    }
+
+    function showToast(msg, dur=2000) {
+        let t = document.getElementById('toastMsg');
+        clearTimeout(window.tt);
+        t.textContent = msg;
+        t.style.opacity = 1;
+        window.tt = setTimeout(() => t.style.opacity = 0, dur);
+    }
+
+    function addNovelFromForm() {
+        let title = document.getElementById('novelName').value.trim();
+        let city = document.getElementById('cityName').value.trim();
+        let quote = document.getElementById('quoteText').value.trim() || "珍藏于此";
+        let lat = parseFloat(document.getElementById('lat').value);
+        let lng = parseFloat(document.getElementById('lng').value);
+        if (!title || !city) { showToast("请填写小说名和城市"); return; }
+        if (isNaN(lat) || isNaN(lng)) { showToast("请填写有效经纬度或使用拾取"); return; }
+        validData.push({ title, city, lat, lng, quote });
+        refreshMarkers();
+        document.getElementById('novelName').value = '';
+        document.getElementById('cityName').value = '';
+        document.getElementById('quoteText').value = '';
+        document.getElementById('lat').value = '';
+        document.getElementById('lng').value = '';
+        showToast(`已添加《${title}》@${city}`);
+    }
+
+    function resetDefault() {
+        if(confirm("恢复默认将清除手动添加的数据，确定吗？")) location.reload();
+    }
+
+    let picking = false;
+    function enablePick() {
+        if(picking) return;
+        picking = true;
+        map.getContainer().style.cursor = 'crosshair';
+        showToast("点击地图拾取坐标", 2000);
+        const onClick = (e) => {
+            document.getElementById('lat').value = e.latlng.lat.toFixed(6);
+            document.getElementById('lng').value = e.latlng.lng.toFixed(6);
+            map.getContainer().style.cursor = '';
+            map.off('click', onClick);
+            picking = false;
+            showToast("坐标已填入");
+        };
+        map.once('click', onClick);
+        setTimeout(() => { if(picking) { map.getContainer().style.cursor = ''; map.off('click', onClick); picking = false; } }, 10000);
+    }
+
+    function initPanel() {
+        const panel = document.getElementById('addPanel');
+        document.getElementById('panelToggle').addEventListener('click', () => {
+            panel.classList.toggle('open');
+            document.querySelector('.toggle-icon').innerHTML = panel.classList.contains('open') ? '▲' : '▼';
+        });
+    }
+
+    function bindEvents() {
+        document.getElementById('searchBtn').onclick = () => searchNovelAndFly(document.getElementById('searchInput').value);
+        document.getElementById('searchInput').onkeypress = e => { if(e.key === 'Enter') searchNovelAndFly(e.target.value); };
+        document.getElementById('resetViewBtn').onclick = resetMapView;
+        document.getElementById('addNovelBtn').onclick = addNovelFromForm;
+        document.getElementById('resetDefaultBtn').onclick = resetDefault;
+        document.getElementById('getCoordFromMapBtn').onclick = enablePick;
+    }
+
+    function initApp() {
+        initMap();
+        map.whenReady(() => refreshMarkers());
+        bindEvents();
+        initPanel();
+        showToast(`🌸 全量地图已加载 | 共 ${validData.length} 条小说记录，${new Set(validData.map(l=>l.title)).size} 部作品`, 5000);
+    }
+
+    window.addEventListener('DOMContentLoaded', initApp);
+</script>
+</body>
+</html>
